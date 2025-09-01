@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,10 +16,12 @@ namespace WebApplication1.Controllers
     [ApiController]
     public class ProductsController : ControllerBase
     {
+        private readonly IMapper _mapper;
         private readonly ApplicationDbContext _context;
 
-        public ProductsController(ApplicationDbContext context)
+        public ProductsController(IMapper mapper,ApplicationDbContext context)
         {
+            _mapper = mapper;
             _context = context;
         }
 
@@ -26,26 +29,23 @@ namespace WebApplication1.Controllers
         [HttpGet]
         public async Task<ActionResult<List<ProductDTO>>> GetProducts()
         {          
-            var model = await _context.Products.Select(c => new ProductDTO
-            {
-                ProductName = c.ProductName,
-                Price = c.Price
-            }).ToListAsync();
+            //var model = await _context.Products.Select(c => new ProductDTO
+            //{
+            //    ProductName = c.ProductName,
+            //    Price = c.Price
+            //}).ToListAsync();
+            var product = await _context.Products.ToListAsync();
+            var model = _mapper.Map<List<ProductDTO>>(product);
             return Ok(model);
         }
 
         // GET: api/Products/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Product>> GetProduct(int id)
+        public async Task<ActionResult<ProductDTO>> GetProduct(int id)
         {
             var product = await _context.Products.FindAsync(id);
-
-            if (product == null)
-            {
-                return NotFound();
-            }
-
-            return product;
+            var model = _mapper.Map<ProductDTO>(product);
+            return model;
         }
 
         // PUT: api/Products/5
@@ -54,14 +54,11 @@ namespace WebApplication1.Controllers
         public async Task<IActionResult> PutProduct(int id, ProductDTO product)
         {
             var productt = await _context.Products.FindAsync(id);
-
             if (productt == null)
             {
                 return BadRequest("no found");
             }
-
-           productt.ProductName = product.ProductName ;
-           productt.Price = product.Price;
+           _mapper.Map(product,productt);
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -70,16 +67,12 @@ namespace WebApplication1.Controllers
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<ProductDTO>> PostProduct(ProductDTO product)
-        {
-            var model = new Product
-            {
-                ProductName = product.ProductName,
-                Price = product.Price
-            };
-            _context.Products.Add(model);
+        {    
+            var model1 = _mapper.Map<Product>(product);
+            _context.Products.Add(model1);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetProducts", new { ProductName = product.ProductName }, model);
+            return CreatedAtAction("GetProducts", new { ProductName = product.ProductName }, model1);
         }
 
         // DELETE: api/Products/5
@@ -91,10 +84,8 @@ namespace WebApplication1.Controllers
             {
                 return NotFound();
             }
-
             _context.Products.Remove(product);
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
